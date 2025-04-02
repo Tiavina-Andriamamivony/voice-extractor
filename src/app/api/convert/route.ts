@@ -25,7 +25,8 @@ export async function POST(request: Request) {
     }
 
     const videoPath = path.join(tempDir, file.name);
-    const wavPath = path.join(tempDir, `${file.name}.wav`);
+    const baseFileName = file.name.replace(/\.[^/.]+$/, ''); // Remove the original extension
+    const wavPath = path.join(tempDir, `${baseFileName}.wav`);
     const mp3Path = path.join(tempDir, `${file.name}.mp3`);
 
     try {
