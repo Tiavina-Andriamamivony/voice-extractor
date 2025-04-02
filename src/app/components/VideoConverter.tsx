@@ -15,6 +15,9 @@ const VideoConverter: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Remove the original extension for the download filename
+    const baseFileName = file.name.replace(/\.[^/.]+$/, '');
+
     setIsConverting(true);
     setResult(null);
 
@@ -25,7 +28,7 @@ const VideoConverter: React.FC = () => {
         const url = URL.createObjectURL(conversionResult.audioBlob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${file.name}.wav`;
+        link.download = `${baseFileName}.wav`;  // Use the clean filename
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
