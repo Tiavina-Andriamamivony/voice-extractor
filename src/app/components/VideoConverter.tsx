@@ -6,33 +6,34 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Upload, Music } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
+import { Download, Play } from "lucide-react";
 
 const VideoConverter: React.FC = () => {
   const [isConverting, setIsConverting] = useState(false);
   const [result, setResult] = useState<ConversionResult | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string>('');
+  const audioRef = React.useRef<HTMLAudioElement>(null);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Remove the original extension for the download filename
     const baseFileName = file.name.replace(/\.[^/.]+$/, '');
-
+    setFileName(baseFileName);
     setIsConverting(true);
     setResult(null);
+    setAudioUrl(null);
 
     try {
       const conversionResult = await convertVideoToAudio(file);
       
       if (conversionResult.success && conversionResult.audioBlob) {
-        const url = URL.createObjectURL(conversionResult.audioBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${baseFileName}.wav`;  // Use the clean filename
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        // Specify the correct MIME type
+        const audioBlob = new Blob([conversionResult.audioBlob], { type: 'audio/wav' });
+        const url = URL.createObjectURL(audioBlob);
+        setAudioUrl(url);
       }
       
       setResult(conversionResult);
@@ -46,9 +47,31 @@ const VideoConverter: React.FC = () => {
     }
   };
 
+  const handleDownload = () => {
+    if (!audioUrl || !result?.success) return;
+    const link = document.createElement('a');
+    link.href = audioUrl;
+    link.download = `${fileName}.wav`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Cleanup URL when component unmounts
+  React.useEffect(() => {
+    return () => {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
+  }, [audioUrl]);
+
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <CardHeader className="space-y-2 sm:space-y-3">
           <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
             <Music className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -68,7 +91,7 @@ const VideoConverter: React.FC = () => {
               <input
                 id="video-file"
                 type="file"
-                accept="video/*"
+                accept="video/*,.mkv"
                 onChange={handleFileSelect}
                 disabled={isConverting}
                 className="hidden"
@@ -87,13 +110,35 @@ const VideoConverter: React.FC = () => {
             </div>
           </div>
 
+          {result?.success && audioUrl && (
+            <div className="space-y-4">
+              <audio 
+                ref={audioRef}
+                controls 
+                className="w-full"
+                preload="metadata"
+              >
+                <source src={audioUrl} type="audio/wav" />
+                Your browser does not support the audio element.
+              </audio>
+              <Button 
+                onClick={handleDownload}
+                className="w-full"
+                variant="outline"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download Audio
+              </Button>
+            </div>
+          )}
+
           {result && (
             <Alert variant={result.success ? "default" : "destructive"}>
               <AlertDescription className="text-sm sm:text-base">
                 {result.message}
                 {result.success && (
                   <div className="mt-2 font-medium">
-                    Audio file has been downloaded
+                    Audio conversion completed
                   </div>
                 )}
               </AlertDescription>
